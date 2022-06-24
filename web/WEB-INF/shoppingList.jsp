@@ -17,14 +17,34 @@
             <input type="submit" value="Add">
         </form>
         <form method="POST" action="">
-            <table>
-                <c:forEach items="${items}" var="item">
-                    <tr>
-                        <td><input type='radio' name='selected' value='${item}'></td>
-                        <td>${item}</td>
-                    </tr>
-                </c:forEach>
-            </table>
+            <c:choose>
+                <c:when test="${empty items}">
+                    Your cart is empty.
+                </c:when>
+                <c:otherwise>
+                    <table>
+                        <c:forEach items="${items}" var="item">
+                            <tr>
+                                <td><input type='radio' name='selected' value='${item}'></td>
+                                <td>${item}</td>
+                            </tr>
+                        </c:forEach>
+                    </table>
+                    <input type="hidden" name="action" value="delete">
+                    <input type="submit" value="Delete">
+                    <c:if test="${totalPages > 1}">
+                        <p>
+                            <c:if test="${actualPage > 1}">
+                                <a href="?action=page_backward"><<<</a>
+                            </c:if>
+                            Page ${actualPage} of ${totalPages}
+                            <c:if test="${actualPage < totalPages}">
+                                <a href="?action=page_forward">>>></a>
+                            </c:if>
+                        </p>
+                    </c:if>
+                </c:otherwise>
+            </c:choose>
         </form>
     </body>
 </html>

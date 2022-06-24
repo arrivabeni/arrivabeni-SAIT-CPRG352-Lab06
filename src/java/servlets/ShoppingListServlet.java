@@ -11,6 +11,7 @@ import javax.servlet.http.HttpSession;
 
 public class ShoppingListServlet extends HttpServlet {
 
+    private final double PAGE_SIZE = 10.0; // Type double helps to round page number
     private final String REGISTER_JSP = "/WEB-INF/register.jsp";
     private final String SHOPPING_LIST_JSP = "/WEB-INF/shoppingList.jsp";
 
@@ -33,6 +34,14 @@ public class ShoppingListServlet extends HttpServlet {
             case "logout":
                 // Destroy the session
                 session.invalidate();
+                // Force cleaning of url parameters
+                response.sendRedirect("ShoppingList");
+                return;
+            case "page_forward":
+            case "page_backward":
+                boolean fwd = action.equals("page_forward");
+                paginate(session, fwd);
+                // Force cleaning of url parameters
                 response.sendRedirect("ShoppingList");
                 return;
             default:
@@ -77,9 +86,11 @@ public class ShoppingListServlet extends HttpServlet {
                 }
                 break;
             case "add":
-
                 addToCart(request, session);
-
+                destination = SHOPPING_LIST_JSP;
+                break;
+            case "delete":
+                removeFromCart(request, session);
                 destination = SHOPPING_LIST_JSP;
                 break;
             default:
@@ -99,12 +110,76 @@ public class ShoppingListServlet extends HttpServlet {
             return;
         }
 
-        ArrayList<String> lstItems = (ArrayList<String>) session.getAttribute("items");
-        lstItems = (lstItems == null) ? new ArrayList<>() : lstItems;
+        ArrayList<String> lstItems = (ArrayList<String>) session.getAttribute("itemsTotal");
+
+        // First item
+        lstItems = lstItems == null ? new ArrayList<>() : lstItems;
 
         lstItems.add(productName);
 
+        session.setAttribute("itemsTotal", lstItems);
+        paginate(session);
+    }
+
+    private void removeFromCart(HttpServletRequest request, HttpSession session) {
+
+        String selected = request.getParameter("selected");
+
+        if (selected == null) {
+            return;
+        }
+
+        ArrayList<String> lstItems = (ArrayList<String>) session.getAttribute("itemsTotal");
+        lstItems.remove(selected);
+        paginate(session);
+
+        session.setAttribute("itemsTotal", lstItems);
+    }
+
+    private void paginate(HttpSession session) {
+        ArrayList<String> lstItemsTotal = (ArrayList<String>) session.getAttribute("itemsTotal");
+        ArrayList<String> lstItems = new ArrayList<>();
+        Object actualPageObj = session.getAttribute("actualPage");
+        int actualPage = actualPageObj == null ? 1 : (int) actualPageObj;
+        int totalPages = (int) Math.ceil(lstItemsTotal.size() / PAGE_SIZE);
+
+        //Prevent page to be out of bounds
+        actualPage = (actualPage == 0) ? 1 : actualPage;
+        actualPage = (actualPage > totalPages) ? totalPages : actualPage;
+
+        int offset = (int) ((actualPage - 1) * PAGE_SIZE);
+        int size = (int) (offset + PAGE_SIZE);
+
+        for (int i = 0; i < lstItemsTotal.size(); i++) {
+            String item = lstItemsTotal.get(i);
+
+            if (i < offset) {
+                continue;
+            }
+            if (i >= size) {
+                break;
+            }
+
+            lstItems.add(item);
+        }
+
+        session.setAttribute("totalPages", totalPages);
+        session.setAttribute("actualPage", actualPage);
         session.setAttribute("items", lstItems);
+    }
+
+    private void paginate(HttpSession session, boolean forward) {
+
+        int actualPage = (int) session.getAttribute("actualPage");
+
+        if (forward) {
+            actualPage++;
+        } else {
+            actualPage--;
+        }
+
+        session.setAttribute("actualPage", actualPage);
+        paginate(session);
     }
 
 }
